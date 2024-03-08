@@ -1,0 +1,69 @@
+---
+- name: Extraer informacion de servicenow
+  gather_facts: false
+  hosts: localhost
+  vars:
+    download_directory: "/users/manzi/downloads"
+  tasks:
+    - name: Traer los cambios de datos
+      servicenow.itsm.api_info:
+        instance:
+          host: https://bacdev.service-now.com
+          username: cyberarc
+          password: ']H91VN,MC)jPK2HU8:bl'
+        resource: change_request
+        sysparm_query: category=DevOps
+      register: result
+
+    - name: Mostrar los datos
+      ansible.builtin.debug:
+        var: result
+
+    - name: Crear lista de sys_id de cambios
+      ansible.builtin.set_fact:
+        cambios_sys_id: "{{ result.record | map(attribute='sys_id') | list }}"
+
+    - name: Mostrar sys_id
+      ansible.builtin.debug:
+        var: cambios_sys_id
+
+    - name: Traer los cambios de datos
+      servicenow.itsm.api_info:
+        instance:
+          host: https://bacdev.service-now.com
+          username: cyberarc
+          password: ']H91VN,MC)jPK2HU8:bl'
+        resource: sys_attachment
+        sysparm_query: table_name=change_request
+      register: resultados
+
+    - name: Mostrar sys_id de adjuntos
+      ansible.builtin.debug:
+        var: resultados
+
+    - name: Crear lista de sys_id de adjuntos
+      ansible.builtin.set_fact:
+        adjuntos: "{{ resultados.record | map(attribute='sys_id') | list }}"
+    - name: Mostrar sys_id de adjuntos
+      ansible.builtin.debug:
+        var: adjuntos
+
+    - name: "Obtener información de adjuntos para cada sys_id (Simulado)"
+      ansible.builtin.debug:
+        msg: "URL de descarga para sys_id {{ item }} sería aquí"
+      loop: "{{ adjuntos }}"
+      register: urls_de_descarga  # Esta sería una simulación de obtener URLs de descarga
+
+    - name: "Mostrar URLs de descarga simuladas (Ejemplo)"
+      ansible.builtin.debug:
+        var: urls_de_descarga
+
+    - name: ServiceNow download attachment module
+      servicenow.itsm.attachment_info:
+        instance:
+          host: https://bacdev.service-now.com
+          username: cyberarc
+          password: ']H91VN,MC)jPK2HU8:bl'
+        dest: /tmp/sn-attachment.jpg
+        sys_id: "{{ item }}"
+      loop: "{{ adjuntos }}"

@@ -1,0 +1,6 @@
+{
+    "ansible.python.interpreterPath": "/usr/local/bin/python3",
+    "yaml.schemas": {
+        "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/ansible.json#/$defs/playbook": "file:///Users/manzi/Downloads/servicenow.itsm/docs/DescargarinfoServicenow.yml"
+    }
+}

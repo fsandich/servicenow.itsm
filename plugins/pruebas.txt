@@ -1,0 +1,16 @@
+    - name: Asegurar que el directorio de descargas existe
+      ansible.builtin.file:
+        path: "{{ download_directory }}"
+        state: directory
+
+    - name: Verificar si el archivo adjunto ya existe
+      ansible.builtin.stat:
+        path: "{{ download_directory }}/adjunto_{{ item }}.ext"
+      register: stat_result
+
+      "{{ item }}"
+      loop: "{{ cambios_sys_id }}"
+      loop_control:
+        loop_var: item
+
+
