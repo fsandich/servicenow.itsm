@@ -10,7 +10,7 @@
         instance:
           host: https://bacdev.service-now.com
           username: cyberarc
-          password: ']H91VN,MC)jPK2HU8:bl'
+          password: 'TBaOmSyOXd-3Qope(i9wXF{}0NF&4DR#{00gT56y'
         resource: change_request
         sysparm_query: category=DevOps
       register: result
@@ -32,7 +32,7 @@
         instance:
           host: https://bacdev.service-now.com
           username: cyberarc
-          password: ']H91VN,MC)jPK2HU8:bl'
+          password: 'TBaOmSyOXd-3Qope(i9wXF{}0NF&4DR#{00gT56y'
         resource: sys_attachment
         sysparm_query: table_name=change_request
       register: resultados
@@ -63,7 +63,7 @@
         instance:
           host: https://bacdev.service-now.com
           username: cyberarc
-          password: ']H91VN,MC)jPK2HU8:bl'
+          password: 'TBaOmSyOXd-3Qope(i9wXF{}0NF&4DR#{00gT56y'
         dest: /tmp/sn-attachment.jpg
         sys_id: "{{ item }}"
       loop: "{{ adjuntos }}"
