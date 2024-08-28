@@ -1,4 +1,0 @@
----
-- name: Extraer informacion de servicenow
-  gather_facts: false
-  hosts: localhost
