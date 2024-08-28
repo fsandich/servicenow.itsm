@@ -2,8 +2,8 @@
 - name: Prueba de Extraer RFC por category
   hosts: localhost
   gather_facts: false
-
-- name: Extraer cambios de datos
-  servicenow.itsm.change_request_info:
-    query:
-      - category: = DevOps 
+  tasks:
+    - name: Extraer cambios de datos
+      servicenow.itsm.change_request_info:
+        query:
+          - category: = DevOps
