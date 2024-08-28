@@ -7,3 +7,4 @@
       servicenow.itsm.change_request_info:
         query:
           - category: = DevOps
+      register: result
