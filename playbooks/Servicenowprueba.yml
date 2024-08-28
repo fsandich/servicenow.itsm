@@ -8,3 +8,7 @@
         query:
           - category: = DevOps
       register: result
+
+    - name: Mostrar los datos
+      ansible.builtin.debug:
+        var: result
