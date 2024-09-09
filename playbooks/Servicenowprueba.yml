@@ -5,6 +5,10 @@
   tasks:
     - name: Extraer cambios de datos
       servicenow.itsm.change_request_info:
+        instance:
+          host: https://bacdev.service-now.com
+          username: cyberarc
+          password: 'TBaOmSyOXd-3Qope(i9wXF{}0NF&4DR#{00gT56y'
         query:
           - category: = DevOps
       register: result
