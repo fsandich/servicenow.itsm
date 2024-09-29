@@ -4,6 +4,126 @@ servicenow.itsm Release Notes
 
 .. contents:: Topics
 
+v2.6.3
+======
+
+Release Summary
+---------------
+
+Fix docs issue with 2.6.2 release
+
+v2.6.2
+======
+
+Release Summary
+---------------
+
+Fix issue with service_catalog endpoint and remove SNOW Tokyo from test matrix
+
+Deprecated Features
+-------------------
+
+- tests - Drop sanity test override matrix, as the inherited job now has the correct excludes
+- tests - Drop testing of Tokyo, as it is no longer supported by ServiceNow
+
+Bugfixes
+--------
+
+- Correct submit_order endpoint for issue
+
+v2.6.1
+======
+
+Release Summary
+---------------
+
+Fix incorrect documentation shipped with 2.6.0
+
+Bugfixes
+--------
+
+- docs - Documentation generated for 2.6.0 was incorrect due to maintainer error. This updates the documentation to be correct and consistent.
+
+v2.6.0
+======
+
+Release Summary
+---------------
+
+Introduce service_catalog modules; fix inventory crash bug and improve performance by handling duplicate records better
+
+Minor Changes
+-------------
+
+- Added check for records(sys_id) that are already processed with reference records
+- Raise Ansible runtime version to 2.15.0 in accordance with Ansible Lifecycle policy. This implies dropping Python 3.9 from the test matrix as well.
+- ServiceNow returns duplicated records causing error at line referenced.pop("sys_id")
+- Update authors in galaxy.yml
+
+Bugfixes
+--------
+
+- now - Fix crash of inventory when query is present (https://github.com/ansible-collections/servicenow.itsm/issues/361).
+
+New Modules
+-----------
+
+- servicenow.itsm.service_catalog - Manage ServiceNow service catalog cart
+- servicenow.itsm.service_catalog_info - List ServiceNow service catalogs along with categories and items
+
+v2.5.0
+======
+
+Release Summary
+---------------
+
+Introduce generic API client, test against all current releases of ServiceNow, and introduce support for Event-Driven Ansible Notification Service (aka EDA NS) application
+
+Minor Changes
+-------------
+
+- Added option to allow changing sysparm_limit for table query (https://github.com/ansible-collections/servicenow.itsm/pull/309).
+- Included integration tests and instances targeting the following ServiceNow releases: Washington, Vancouver, Utah, Tokyo
+- api - allow `api` module to make request outside `Table API` namespace(https://github.com/ansible-collections/servicenow.itsm/pull/314).
+- api_info - allow `api_info` module to make request outside `Table API` namespace(https://github.com/ansible-collections/servicenow.itsm/pull/314).
+- change_request - allow change_request_mapping for category parameter (https://github.com/ansible-collections/servicenow.itsm/issues/266).
+- client - allow user to pass a `object_hook` function to rest client for custom decoding of the json response(https://github.com/ansible-collections/servicenow.itsm/pull/316).
+- configuration_item_relations - add module to add and remove relations between configuration items.
+- configuration_item_relations_info - add module retrieve relations of a configuration item.
+- now - add cache support for the inventory plugin (https://github.com/ansible-collections/servicenow.itsm/pull/315).
+- now.py - replace "." in reference field column name to "_" in host variable
+
+Bugfixes
+--------
+
+- now - Fix crash when SN_TIMEOUT is set because is it passed as string instead of a number (https://github.com/ansible-collections/servicenow.itsm/pull/348).
+
+New Modules
+-----------
+
+- servicenow.itsm.configuration_item_relations - Manage ServiceNow relations between configuration items
+- servicenow.itsm.configuration_item_relations_info - Retreive ServiceNow relations of configuration items
+
+v2.4.0
+======
+
+Minor Changes
+-------------
+
+- Updated release script for servicenow collection.
+- api - added custom headers and api path to the given request (https://github.com/ansible-collections/servicenow.itsm/pull/239).
+- use get_record_by_sys_id instead of get_record in methods update, delete (https://github.com/ansible-collections/servicenow.itsm/pull/307).
+
+Bugfixes
+--------
+
+- change_request - allow query assignment_group by sys_id (https://github.com/ansible-collections/servicenow.itsm/issues/295)
+- change_request_task - allow query assignment_group by sys_id (https://github.com/ansible-collections/servicenow.itsm/issues/295)
+- change_request_task - remove duplicate option 'testing' from 'type' argument_spec.
+- configuration_item_info - allow user to specify limited return fields for the specified configuration item (https://github.com/ansible-collections/servicenow.itsm/pull/208).
+- incident - allow incident_mapping for close_code parameter.
+- now - added missing SN_SYSPARM_QUERY environment variable (https://github.com/ansible-collections/servicenow.itsm/issues/293).
+- table_client - Fix 'KeyError' exception when fetching records by sys_id and add `must_have` arguments (https://github.com/ansible-collections/servicenow.itsm/pull/306)
 
 v2.3.0
 ======
@@ -14,7 +134,6 @@ Release Summary
 This is the minor release of the ``servicenow.itsm`` collection.
 This changelog contains all changes to the modules in this collection that
 have been added after the release of ``servicenow.itsm`` 2.2.0.
-
 
 Minor Changes
 -------------
@@ -38,7 +157,6 @@ This is the minor release of the ``servicenow.itsm`` collection.
 This changelog contains all changes to the modules in this collection that
 have been added after the release of ``servicenow.itsm`` 2.1.0.
 
-
 Minor Changes
 -------------
 
@@ -58,7 +176,6 @@ Release Summary
 This is the minor release of the ``servicenow.itsm`` collection.
 This changelog contains all changes to the modules in this collection that
 have been added after the release of ``servicenow.itsm`` 2.0.0.
-
 
 Minor Changes
 -------------
@@ -127,7 +244,6 @@ Release Summary
 
 This is the minor release of the ``servicenow.itsm`` collection.
 
-
 Minor Changes
 -------------
 
@@ -145,7 +261,6 @@ Release Summary
 
 This is the patch release of the ``servicenow.itsm`` collection.
 
-
 v1.3.2
 ======
 
@@ -154,7 +269,6 @@ Release Summary
 
 This is the patch release of the ``servicenow.itsm`` collection.
 
-
 v1.3.1
 ======
 
@@ -162,7 +276,6 @@ Release Summary
 ---------------
 
 This is the patch release of the ``servicenow.itsm`` collection.
-
 
 v1.3.0
 ======
@@ -173,7 +286,6 @@ Release Summary
 This is the minor release of the ``servicenow.itsm`` collection.
 This changelog contains all changes to the modules in this collection that
 have been added after the release of ``servicenow.itsm`` 1.2.0.
-
 
 Minor Changes
 -------------

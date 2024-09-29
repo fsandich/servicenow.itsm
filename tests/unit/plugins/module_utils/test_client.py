@@ -21,6 +21,18 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def custom_decoder_hook(dct):
+    if "result" in dct:
+        if not isinstance(dct["result"], list):
+            return dct
+
+        item = dct["result"]
+        for k in item:
+            if "__meta" in k:
+                item.remove(k)
+    return dct
+
+
 class TestResponseInit:
     @pytest.mark.parametrize(
         "raw_headers,expected_headers",
@@ -38,11 +50,11 @@ class TestResponseInit:
         resp = client.Response(
             200,
             '{"a": ["b", "c"], "d": 1}',
-            headers=[("Content-type", "applcation/json")],
+            headers=[("Content-type", "application/json")],
         )
 
         assert resp.status == 200
-        assert resp.headers == {"content-type": "applcation/json"}
+        assert resp.headers == {"content-type": "application/json"}
         assert resp.data == '{"a": ["b", "c"], "d": 1}'
         assert resp.json == {"a": ["b", "c"], "d": 1}
 
@@ -60,12 +72,30 @@ class TestResponseInit:
         resp = client.Response(
             200,
             '{"a": ["b", "c"], "d": 1}',
-            headers=[("Content-type", "applcation/json")],
+            headers=[("Content-type", "application/json")],
         )
         resp.json
         resp.json
 
         assert json_mock.loads.call_count == 1
+
+    def test_custom_decoder_hook(self):
+        resp = client.Response(
+            200,
+            '{"result": [{"__meta": {"encodedQuery": "some_query"}}]}',
+            headers=[("Content-type", "application/json")],
+            json_decoder_hook=custom_decoder_hook,
+        )
+        assert resp.json == {"result": []}
+
+    def test_custom_decoder_hook_with_values(self):
+        resp = client.Response(
+            200,
+            '{"result": [{"some_obj": "value"},{"__meta": {"encodedQuery": "some_query"}}]}',
+            headers=[("Content-type", "application/json")],
+            json_decoder_hook=custom_decoder_hook,
+        )
+        assert resp.json == {"result": [{"some_obj": "value"}]}
 
 
 class TestClientInit:

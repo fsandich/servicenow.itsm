@@ -25,8 +25,10 @@ description:
 version_added: 1.0.0
 extends_documentation_fragment:
   - ansible.builtin.constructed
+  - inventory_cache
 notes:
   - Query feature and constructed groups were added in version 1.2.0.
+  - Caching feature added in version 2.5.0.
 options:
   plugin:
     description:
@@ -143,6 +145,13 @@ options:
     env:
       - name: SN_SYSPARM_QUERY
     version_added: 2.0.0
+  sysparm_limit:
+    description:
+      - Control the maximum number of records returned in a single query.
+    type: int
+    default: 1000
+    version_added: 2.5.0
+
 """
 
 EXAMPLES = r"""
@@ -326,6 +335,7 @@ from ansible.inventory.group import to_safe_group_name as orig_safe
 from ansible.plugins.inventory import (
     BaseInventoryPlugin,
     Constructable,
+    Cacheable,
     to_safe_group_name,
 )
 from ansible.utils.vars import combine_vars
@@ -379,7 +389,7 @@ class ConstructableWithLookup(Constructable):
         else:
             t.available_variables = variables
 
-        """ Only change that we have overriden is that we do not disable lookups"""
+        """ Only change that we have overridden is that we do not disable lookups"""
         return t.template(
             "%s%s%s"
             % (
@@ -391,7 +401,7 @@ class ConstructableWithLookup(Constructable):
         )
 
 
-class InventoryModule(BaseInventoryPlugin, ConstructableWithLookup):
+class InventoryModule(BaseInventoryPlugin, ConstructableWithLookup, Cacheable):
     NAME = "servicenow.itsm.now"
 
     # Constructable methods use the _sanitize_group_name class method to filter out
@@ -433,7 +443,7 @@ class InventoryModule(BaseInventoryPlugin, ConstructableWithLookup):
             )
 
         for k in columns:
-            self.inventory.set_variable(host, k, record[k])
+            self.inventory.set_variable(host, k.replace(".", "_"), record[k])
 
     def fill_constructed(
         self,
@@ -488,6 +498,12 @@ class InventoryModule(BaseInventoryPlugin, ConstructableWithLookup):
                     return value
             return None
 
+        def get_timeout_from_env(default=120):
+            try:
+                return float(os.getenv("SN_TIMEOUT"))
+            except (ValueError, TypeError):
+                return default
+
         return dict(
             host=os.getenv("SN_HOST"),
             username=os.getenv("SN_USERNAME"),
@@ -496,7 +512,7 @@ class InventoryModule(BaseInventoryPlugin, ConstructableWithLookup):
             client_secret=get_secret_from_env(),
             refresh_token=os.getenv("SN_REFRESH_TOKEN"),
             grant_type=os.getenv("SN_GRANT_TYPE"),
-            timeout=os.getenv("SN_TIMEOUT"),
+            timeout=get_timeout_from_env(),
         )
 
     def _get_instance(self):
@@ -504,10 +520,48 @@ class InventoryModule(BaseInventoryPlugin, ConstructableWithLookup):
         instance_env = self._get_instance_from_env()
         return self._merge_instance_config(instance_config, instance_env)
 
+    def _construct_cache_suffix(self):
+        """
+        Return the cache suffix constructued from either query or sysparm_query.
+        As the query can be a list of dict elements, key and values are encoded in base64.
+        The result is base64 encoded.
+        """
+
+        def __encode(s):
+            from base64 import b64encode
+
+            return b64encode(s.encode()).decode()
+
+        suffix = ""
+        if self.get_option("query"):
+            for query in self.get_option("query"):
+                for k, v in query.items():
+                    if suffix:
+                        suffix = "{0}_{1}_{2}".format(suffix, k, v)
+                    else:
+                        suffix = "{0}_{1}".format(k, v)
+        elif self.get_option("sysparm_query"):
+            suffix = self.get_option("sysparm_query")
+        else:
+            return ""
+        return __encode(suffix)
+
     def parse(self, inventory, loader, path, cache=True):
         super(InventoryModule, self).parse(inventory, loader, path)
 
         self._read_config_data(path)
+        self.cache_key = self.get_cache_key(path)
+        cache_sub_key = "/".join(
+            [
+                self._get_instance()["host"].rstrip("/"),
+                "table",
+                self.get_option("table"),
+                self._construct_cache_suffix(),
+            ]
+        )
+
+        self.use_cache = self.get_option("cache") and cache
+        self.update_cache = self.get_option("cache") and not cache
 
         try:
             client = Client(**self._get_instance())
@@ -516,7 +570,11 @@ class InventoryModule(BaseInventoryPlugin, ConstructableWithLookup):
 
         enhanced = self.get_option("enhanced")
 
-        table_client = TableClient(client)
+        sysparm_limit = self.get_option("sysparm_limit")
+        if sysparm_limit:
+            table_client = TableClient(client, batch_size=sysparm_limit)
+        else:
+            table_client = TableClient(client)
 
         table = self.get_option("table")
         name_source = self.get_option("inventory_hostname_source")
@@ -531,37 +589,54 @@ class InventoryModule(BaseInventoryPlugin, ConstructableWithLookup):
                 "exclusive."
             )
 
-        # TODO: Insert caching here once we remove deprecated functionality
-        records = fetch_records(
-            table_client,
-            table,
-            query or sysparm_query,
-            is_encoded_query=bool(sysparm_query),
-        )
+        records = []
 
-        referenced_columns = [x for x in columns if "." in x]
-        if referenced_columns:
-            referenced_records = fetch_records(
+        if not self.update_cache:
+            try:
+                records = self._cache[self.cache_key][cache_sub_key]
+            except KeyError:
+                pass
+
+        if not records:
+            if self.cache_key not in self._cache:
+                self._cache[self.cache_key] = {path: ""}
+
+            records = fetch_records(
                 table_client,
                 table,
                 query or sysparm_query,
-                fields=referenced_columns + ["sys_id"],
                 is_encoded_query=bool(sysparm_query),
             )
 
-            referenced_dict = dict((x["sys_id"], x) for x in referenced_records)
-            for record in records:
-                referenced = referenced_dict.get(record["sys_id"], None)
-                if referenced:
-                    referenced.pop("sys_id")
-                    for key, value in referenced.items():
-                        record[key] = value
+            referenced_columns = [x for x in columns if "." in x]
+            if referenced_columns:
+                referenced_records = fetch_records(
+                    table_client,
+                    table,
+                    query or sysparm_query,
+                    fields=referenced_columns + ["sys_id"],
+                    is_encoded_query=bool(sysparm_query),
+                )
 
-        if enhanced:
-            rel_records = fetch_records(
-                table_client, REL_TABLE, REL_QUERY, fields=REL_FIELDS
-            )
-            enhance_records_with_rel_groups(records, rel_records)
+                referenced_dict = dict((x["sys_id"], x) for x in referenced_records)
+                # Keep track of processed 'sys_id' to avoid popping it twice if there were duplicates returned by ServiceNow.
+                processed_records = []
+                for record in records:
+                    referenced = referenced_dict.get(record["sys_id"], None)
+                    if referenced:
+                        if record["sys_id"] not in processed_records:
+                            referenced.pop("sys_id")
+                        processed_records.append(record["sys_id"])
+                        for key, value in referenced.items():
+                            record[key] = value
+
+            if enhanced:
+                rel_records = fetch_records(
+                    table_client, REL_TABLE, REL_QUERY, fields=REL_FIELDS
+                )
+                enhance_records_with_rel_groups(records, rel_records)
+
+            self._cache[self.cache_key] = {cache_sub_key: records}
 
         self.fill_constructed(
             records,
